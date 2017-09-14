@@ -5,7 +5,7 @@
 
 #### 実行方法
 事前にPCに、VirtualBox、Vagrant、Ansibleをインストールして下さい。
-また、VirtualBoxでは"ubuntu/xenial64"を使用しているので、下記コマンドなどでboxを追加しておいて下さい。
+また、VirtualBoxでは"ubuntu/xenial64"を使用しているので、下記コマンドなどでboxを追加しておいて下さい。
 
 ```$ vagrant box add ubuntu/xenial64```
 
