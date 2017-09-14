@@ -1,0 +1,115 @@
+---
+- name: Laravel
+  hosts: all
+  become: yes
+
+  vars:
+  # 0. Set Project Name
+  #- project_name: laravel
+  
+  tasks:
+  # 1. Install Package
+  - name: install apt packeges
+    apt: pkg={{ item }} update_cache=yes cache_valid_time=3600
+    with_items:
+    - zip
+    - unzip
+    - curl
+    - sysv-rc-conf
+    - nginx
+    - mysql-server
+    - php7.0-fpm
+    - php7.0-mysql
+    - php7.0-common
+    - php7.0-cli
+    - php7.0-intl
+    - php7.0-curl
+    - php7.0-cgi
+    - php7.0-fpm
+    - php7.0-mysql
+    - php7.0-gd
+    - php7.0-mbstring
+    - php7.0-mcrypt
+    - php7.0-xml
+
+  # 2. Set sysv-rc-conf
+  - name: Set sysv-rc-conf
+    command: sysv-rc-conf {{ item }} on
+    with_items:
+    - nginx
+    - mysql
+    - php7.0-fpm
+
+  # 3. Replace Nginx ConfigFile
+  - name: replace nginx config file
+    copy: >
+      src=./data/nginx/nginx.conf
+      dest=/etc/nginx/nginx.conf
+  
+  - name: replace nginx-vagrant config file
+    copy: >
+      src=./data/nginx/virtual.conf
+      dest=/etc/nginx/conf.d/virtual.conf
+
+  - name: make nginx-vagrant access-log file
+    file: path=/var/log/nginx/virtual_access_log state=touch mode="u=rw,g=r"
+
+  - name: make nginx-vagrant error-log file
+    file: path=/var/log/nginx/virtual_error_log state=touch mode="u=rw,g=r"
+
+  # 4. Install Composer
+  - name: install composer
+    shell: curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+    args:
+      creates: /usr/local/bin/composer
+
+  - name: composer self-update
+    become_user: ubuntu
+    command: composer self-update
+
+  - name: change authority
+    file: path=/usr/local/bin/composer mode=a+x state=file
+    tags: composer 
+
+  # 5. Install Laravel
+  - name: install laravel framewark
+    command: composer global require "laravel/installer=~1.1"
+
+  - name: create laravel directory
+    file: path=/var/www/laravel state=directory owner=ubuntu group=ubuntu mode=0775
+
+  - name: make laravel project
+    become_user: ubuntu
+    composer:
+      command: create-project
+      arguments: laravel/laravel
+      working_dir: /var/www/
+      prefer_dist: yes
+
+  - name: change mode directory 
+    file: path=/var/www/laravel/{{ item }} state=directory mode="u=rwx,g=rwx,o=rwx" recurse=yes
+    with_items:
+    - storage
+    - bootstrap/cache
+
+  - name: make log file
+    file: path=/var/www/laravel/storage/logs/laravel.log state=touch mode="u=rwx,g=rwx,o=rwx"
+
+  - name: update laravel project
+    become_user: ubuntu
+    composer:
+      command: update
+      working_dir: /var/www/laravel
+
+  - name: Set Laravel Key
+    command: php artisan key:generate
+    args:
+      chdir: /var/www/laravel/
+
+  # 6. Restart
+  - name: restart service
+    command: systemctl restart {{ item }}
+    with_items:
+    - nginx
+    - mysql
+    - php7.0-fpm.service
