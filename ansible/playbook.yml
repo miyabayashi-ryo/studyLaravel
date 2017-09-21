@@ -101,10 +101,19 @@
       command: update
       working_dir: /var/www/laravel
 
-  - name: Set Laravel Key
+  - name: set Laravel Key
     command: php artisan key:generate
     args:
       chdir: /var/www/laravel/
+
+  # 5. Setup MySQL
+  - name: create mysql user
+    mysql_user: name=user password=password priv=*.*:ALL state=present host={{item}}
+    with_items:
+      - "localhost"
+ 
+  - name: create mysql database
+    mysql_db: name=laravel state=present encoding=utf8
 
   # 6. Restart
   - name: restart service
